@@ -1,0 +1,307 @@
+--============================================================
+-- PATCH FINAL — AUTO-SAVE A CADA 30 SEGUNDOS
+-- Salva TUDO: botões, configs, toggles, tema, background, etc.
+-- Cole no FINAL do script (após o patch Neko consolidado)
+--============================================================
+task.spawn(function()
+    task.wait(8) -- espera todo o hub + patches carregarem
+
+    if not gui or not main then
+        warn("[Lifizin AutoSave] GUI não pronta — abortando")
+        return
+    end
+
+    --============================================================
+    -- FUNÇÃO DE CAPTURA COMPLETA DO ESTADO
+    --============================================================
+    local function captureFullState()
+        local state = {
+            timestamp = os.time(),
+            -- Configs numéricas
+            NS = NS,
+            CS = CS,
+            LAGGER_SPEED = LAGGER_SPEED,
+            LAGGER_CARRY_SPEED = LAGGER_CARRY_SPEED,
+            BAT_AIMBOT_SPEED = BAT_AIMBOT_SPEED,
+            BYPASS_AIMBOT_SPEED = BYPASS_AIMBOT_SPEED,
+            bodyLockRange = bodyLockRange,
+            uiScaleValue = uiScaleValue,
+            floatingButtonScale = floatingButtonScale,
+            stretchFOV = stretchFOV,
+            dropMode = dropMode,
+            CONFIG_STEAL_RANGE = CONFIG and CONFIG.STEAL_RANGE,
+            CONFIG_PRIME_RANGE = CONFIG and CONFIG.PRIME_RANGE,
+            -- Estados booleanos
+            speedMode = speedMode,
+            laggerToggled = laggerToggled,
+            laggerCarryToggled = laggerCarryToggled,
+            antiRagdollMode = antiRagdollMode,
+            antiDieEnabled = antiDieEnabled,
+            antiBatEnabled = antiBatEnabled,
+            antiFlingEnabled = antiFlingEnabled,
+            medusaCounterEnabled = medusaCounterEnabled,
+            batCounterEnabled = batCounterEnabled,
+            batCounterV2Enabled = batCounterV2Enabled,
+            unwalkEnabled = unwalkEnabled,
+            autoLeftEnabled = autoLeftEnabled,
+            autoRightEnabled = autoRightEnabled,
+            autoBatEnabled = autoBatEnabled,
+            antiLagEnabled = antiLagEnabled,
+            espEnabled = espEnabled,
+            espLineEnabled = espLineEnabled,
+            vividGraphicsEnabled = vividGraphicsEnabled,
+            hideButtonsEnabled = hideButtonsEnabled,
+            bodyLockEnabled = bodyLockEnabled,
+            stretchEnabled = stretchEnabled,
+            uiLocked = uiLocked,
+            mobileButtonsLocked = mobileButtonsLocked,
+            useVenixCarryEngine = useVenixCarryEngine,
+            -- Auto Steal
+            autoStealEnabled = CONFIG and CONFIG.AUTO_STEAL_ENABLED,
+            autoStealMode = autoStealMode,
+            -- Sky / anim / outfit
+            skyTheme = skyTheme,
+            currentAnimPack = currentAnimPack,
+            currentOutfitIndex = currentOutfitIndex,
+            -- Background
+            backgroundMode = backgroundMode,
+            backgroundIndex = backgroundIndex,
+            backgroundImageTransparency = backgroundImageTransparency,
+            -- Tema
+            currentColorTheme = currentColorTheme,
+            selectedColor_R = selectedColor and selectedColor.R,
+            selectedColor_G = selectedColor and selectedColor.G,
+            selectedColor_B = selectedColor and selectedColor.B,
+            currentRivalTitleTheme = currentRivalTitleTheme,
+            -- InfiniteJump
+            infiniteJumpEnabled = InfiniteJump and InfiniteJump.enabled,
+            infiniteJumpMode = InfiniteJump and InfiniteJump.mode,
+            -- All Gears
+            AG_AntiTrap = _G.LZ_AG_AntiTrap,
+            AG_AntiBee = _G.LZ_AG_AntiBee,
+            AG_AntiBodySplash = _G.LZ_AG_AntiBodySplash,
+            AG_ToolAimbot = _G.LZ_AG_ToolAimbot,
+            AG_AntiSentry = _G.LZ_AG_AntiSentry,
+            XN_AntiGummy = _G.LZ_XN_AntiGummy,
+            XN_AntiBoogie = _G.LZ_XN_AntiBoogie,
+            XN_AntiPaintball = _G.LZ_XN_AntiPaintball,
+            -- Keybinds (nomes)
+            KB_DropBrainrot_kb = KB.DropBrainrot.kb and KB.DropBrainrot.kb.Name,
+            KB_DropBrainrot_gp = KB.DropBrainrot.gp and KB.DropBrainrot.gp.Name,
+            KB_AutoLeft_kb = KB.AutoLeft.kb and KB.AutoLeft.kb.Name,
+            KB_AutoLeft_gp = KB.AutoLeft.gp and KB.AutoLeft.gp.Name,
+            KB_AutoRight_kb = KB.AutoRight.kb and KB.AutoRight.kb.Name,
+            KB_AutoRight_gp = KB.AutoRight.gp and KB.AutoRight.gp.Name,
+            KB_AutoBat_kb = KB.AutoBat.kb and KB.AutoBat.kb.Name,
+            KB_AutoBat_gp = KB.AutoBat.gp and KB.AutoBat.gp.Name,
+            KB_TPFloor_kb = KB.TPFloor.kb and KB.TPFloor.kb.Name,
+            KB_TPFloor_gp = KB.TPFloor.gp and KB.TPFloor.gp.Name,
+            KB_GuiHide_kb = KB.GuiHide.kb and KB.GuiHide.kb.Name,
+            KB_GuiHide_gp = KB.GuiHide.gp and KB.GuiHide.gp.Name,
+            KB_CarryToggle_kb = KB.CarryToggle.kb and KB.CarryToggle.kb.Name,
+            KB_CarryToggle_gp = KB.CarryToggle.gp and KB.CarryToggle.gp.Name,
+            KB_LaggerMode_kb = KB.LaggerMode.kb and KB.LaggerMode.kb.Name,
+            KB_LaggerMode_gp = KB.LaggerMode.gp and KB.LaggerMode.gp.Name,
+            KB_BatV2_kb = KB.BatV2.kb and KB.BatV2.kb.Name,
+            KB_BatV2_gp = KB.BatV2.gp and KB.BatV2.gp.Name,
+            -- Posições e escalas
+            mobileButtonPositions = savedButtonPositions,
+            progressBarPos = savedProgressBarPos,
+            mainPosition = nil,
+            -- Botões mobile (estados ON/OFF reais)
+            mobileButtonsState = {},
+        }
+
+        -- Posição do main
+        if main then
+            state.mainPosition = {
+                XScale = main.Position.X.Scale,
+                XOffset = main.Position.X.Offset,
+                YScale = main.Position.Y.Scale,
+                YOffset = main.Position.Y.Offset,
+            }
+        end
+
+        -- Posição do HUD auto steal
+        if pbFrame then
+            state.hudPosition = {
+                XScale = pbFrame.Position.X.Scale,
+                XOffset = pbFrame.Position.X.Offset,
+                YScale = pbFrame.Position.Y.Scale,
+                YOffset = pbFrame.Position.Y.Offset,
+            }
+        end
+
+        -- Posição do mini button
+        if miniBtn then
+            state.miniPosition = {
+                XScale = miniBtn.Position.X.Scale,
+                XOffset = miniBtn.Position.X.Offset,
+                YScale = miniBtn.Position.Y.Scale,
+                YOffset = miniBtn.Position.Y.Offset,
+            }
+        end
+
+        -- Botões mobile: posição + estado ON/OFF
+        if MobilePanel then
+            for _, btn in ipairs(MobilePanel:GetChildren()) do
+                if btn:IsA("TextButton") and btn.Name then
+                    state.mobileButtonsState[btn.Name] = {
+                        X = btn.Position.X.Offset,
+                        Y = btn.Position.Y.Offset,
+                        Active = btn:GetAttribute("MobActive") == true,
+                    }
+                end
+            end
+        end
+
+        -- Botões de toggle da GUI (se existirem) — estado ON/OFF visual
+        state.toggleStates = {}
+        if main then
+            for _, obj in ipairs(main:GetDescendants()) do
+                if obj:IsA("Frame") and obj:GetAttribute("LifezinActive") ~= nil then
+                    -- identifica pelo texto do label
+                    local label = nil
+                    for _, c in ipairs(obj:GetChildren()) do
+                        if c:IsA("TextLabel") and c.Name ~= "State" then
+                            label = c.Text
+                            break
+                        end
+                    end
+                    if label then
+                        state.toggleStates[label] = obj:GetAttribute("LifezinActive") == true
+                    end
+                end
+            end
+        end
+
+        return state
+    end
+
+    --============================================================
+    -- FUNÇÃO DE SALVAR (sobrescreve arquivo)
+    --============================================================
+    local SAVE_FILE = "Lifizin_FullState_" .. tostring(LP.UserId) .. ".json"
+    local lastStateJson = nil
+
+    local function saveFullState()
+        pcall(function()
+            local state = captureFullState()
+            local json = HS:JSONEncode(state)
+
+            -- Só salva se mudou algo (economiza I/O)
+            if json == lastStateJson then
+                return false
+            end
+
+            if type(writefile) == "function" then
+                writefile(SAVE_FILE, json)
+                lastStateJson = json
+                print("[Lifizin AutoSave] ✅ Salvo em " .. SAVE_FILE .. " (" .. os.date("%H:%M:%S") .. ")")
+                return true
+            else
+                warn("[Lifizin AutoSave] writefile não disponível")
+                return false
+            end
+        end)
+        return false
+    end
+
+    --============================================================
+    -- CARREGAR ESTADO SALVO (no boot, se existir)
+    --============================================================
+    task.spawn(function()
+        task.wait(1)
+        pcall(function()
+            if type(isfile) ~= "function" or type(readfile) ~= "function" then return end
+            if not isfile(SAVE_FILE) then return end
+            local data = HS:JSONDecode(readfile(SAVE_FILE))
+            if type(data) ~= "table" then return end
+
+            print("[Lifizin AutoSave] 📂 Carregando estado salvo...")
+
+            -- Restaura posições dos botões mobile
+            if type(data.mobileButtonsState) == "table" and MobilePanel then
+                for _, btn in ipairs(MobilePanel:GetChildren()) do
+                    if btn:IsA("TextButton") and btn.Name then
+                        local saved = data.mobileButtonsState[btn.Name]
+                        if saved then
+                            btn.Position = UDim2.fromOffset(saved.X or btn.Position.X.Offset, saved.Y or btn.Position.Y.Offset)
+                            -- Restaura estado ON/OFF (sem chamar callback pra evitar re-trigger)
+                            if saved.Active ~= nil then
+                                pcall(function()
+                                    btn:SetAttribute("MobActive", saved.Active)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Restaura posição do main
+            if type(data.mainPosition) == "table" and main then
+                main.Position = UDim2.new(
+                    data.mainPosition.XScale or 0, data.mainPosition.XOffset or 18,
+                    data.mainPosition.YScale or 0, data.mainPosition.YOffset or 16
+                )
+            end
+
+            -- Restaura posição do HUD
+            if type(data.hudPosition) == "table" and pbFrame then
+                pbFrame.Position = UDim2.new(
+                    data.hudPosition.XScale or 1, data.hudPosition.XOffset or -282,
+                    data.hudPosition.YScale or 0, data.hudPosition.YOffset or 18
+                )
+            end
+
+            -- Restaura posição do mini
+            if type(data.miniPosition) == "table" and miniBtn then
+                miniBtn.Position = UDim2.new(
+                    data.miniPosition.XScale or 0, data.miniPosition.XOffset or 16,
+                    data.miniPosition.YScale or 0, data.miniPosition.YOffset or 58
+                )
+            end
+
+            -- Restaura velocidade
+            if type(data.NS) == "number" then NS = data.NS end
+            if type(data.CS) == "number" then CS = data.CS end
+            if type(data.LAGGER_SPEED) == "number" then LAGGER_SPEED = data.LAGGER_SPEED end
+            if type(data.LAGGER_CARRY_SPEED) == "number" then LAGGER_CARRY_SPEED = data.LAGGER_CARRY_SPEED end
+            if type(data.BAT_AIMBOT_SPEED) == "number" then BAT_AIMBOT_SPEED = data.BAT_AIMBOT_SPEED end
+            if type(data.bodyLockRange) == "number" then bodyLockRange = data.bodyLockRange end
+            if type(data.uiScaleValue) == "number" then uiScaleValue = data.uiScaleValue end
+            if type(data.floatingButtonScale) == "number" then floatingButtonScale = data.floatingButtonScale end
+            if type(data.dropMode) == "number" then dropMode = data.dropMode end
+
+            -- Restaura tema
+            if data.currentColorTheme and COLOR_THEMES and COLOR_THEMES[data.currentColorTheme] then
+                currentColorTheme = data.currentColorTheme
+                selectedColor = COLOR_THEMES[data.currentColorTheme]
+                if updateAllUIThemeColors then pcall(updateAllUIThemeColors, selectedColor) end
+            end
+
+            -- Restaura background
+            if type(data.backgroundMode) == "string" then
+                backgroundMode = data.backgroundMode
+            end
+
+            -- Restaura sky
+            if type(data.skyTheme) == "string" then
+                skyTheme = data.skyTheme
+            end
+
+            print("[Lifizin AutoSave] ✅ Estado restaurado")
+        end)
+    end)
+
+    --============================================================
+    -- LOOP DE AUTO-SAVE A CADA 30 SEGUNDOS
+    --============================================================
+    print("[Lifizin AutoSave] 🕐 Iniciando auto-save a cada 30s")
+    while task.wait(30) do
+        pcall(function()
+            if not gui or not gui.Parent then return end
+            saveFullState()
+        end)
+    end
+end)
